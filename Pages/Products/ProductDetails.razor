@@ -1,0 +1,148 @@
+﻿@page "/product/{ProductId:int}"
+@using PixelPort.Components.Models
+@using PixelPort.Services
+@inject ProductService productService
+@inject NavigationManager navigation
+@rendermode InteractiveServer
+
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f4f6f8;
+        margin: 0;
+        padding: 0;
+    }
+
+    .product-details-container {
+        max-width: 1000px;
+        margin: 3rem auto;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        padding: 2rem;
+        transition: transform 0.3s;
+    }
+
+        .product-details-container:hover {
+            transform: translateY(-3px);
+        }
+
+    .product-image {
+        flex: 1 1 350px;
+        max-width: 450px;
+        border-radius: 16px;
+        object-fit: cover;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+
+    .product-info {
+        flex: 1 1 400px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+        .product-info h2 {
+            font-size: 2.4rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .product-info p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+            color: #555;
+        }
+
+        .product-info .category,
+        .product-info .stock {
+            font-weight: 600;
+            color: #34495e;
+        }
+
+    .product-price {
+        font-size: 2rem;
+        color: #1abc9c;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 0.9rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s, transform 0.2s;
+        margin-right: 1rem;
+        margin-top: 1rem;
+        width: fit-content;
+    }
+
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+    .back-btn {
+        background: #95a5a6;
+    }
+
+        .back-btn:hover {
+            background: #7f8c8d;
+        }
+
+</style>
+
+@if (product == null)
+{
+    <div style="text-align:center; margin-top:6rem;">
+        <h3 style="color:#e74c3c;">Product not found.</h3>
+        <button class="btn back-btn" @onclick="GoBack">Back to Products</button>
+    </div>
+}
+else
+{
+    <div class="product-details-container">
+        <img class="product-image" src="@product.ImageUrl" alt="@product.Name" />
+
+        <div class="product-info">
+            <h2>@product.Name</h2>
+            <p class="product-price">@product.Price.ToString("C")</p>
+            <p class="category"><strong>Category:</strong> @product.Category</p>
+            <p class="stock"><strong>Stock:</strong> @product.Stock</p>
+            <p>@product.Description</p>
+
+            <div>
+                <button class="btn back-btn" @onclick="GoBack">Back to Products</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int ProductId { get; set; }
+
+    private Product? product;
+
+    protected override async Task OnInitializedAsync()
+    {
+        product = await productService.GetByIdAsync(ProductId);
+        if (product == null)
+        {
+            Console.WriteLine($"Product with ID {ProductId} not found.");
+        }
+    }
+
+    private void GoBack()
+    {
+        navigation.NavigateTo("/products");
+    }
+}

@@ -1,0 +1,806 @@
+﻿@page "/admin-dashboard"
+@using PixelPort.Services
+@using PixelPort.Components.Models
+@inject ProductService productService
+@inject NavigationManager navigation
+@using Microsoft.EntityFrameworkCore
+@using PixelPort.Data
+@inject AppDbContext dbContext
+@rendermode InteractiveServer
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Outfit', sans-serif;
+    }
+
+    /* Container */
+    .dashboard-container {
+        padding: 2.5rem;
+        background: linear-gradient(135deg, #f8f9fc 0%, #e9ecf5 100%);
+        min-height: 100vh;
+    }
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    h2 {
+        color: #1a202c;
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+
+    .search-filter-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+        animation: slideDown 0.4s ease-out;
+    }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .search-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .search-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+        .search-field label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .search-field input,
+        .search-field select {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.2s ease;
+            background: #f8fafc;
+        }
+
+            .search-field input:focus,
+            .search-field select:focus {
+                outline: none;
+                border-color: #667eea;
+                background: white;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+
+    .search-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .btn-search,
+    .btn-clear {
+        padding: 0.875rem 2rem;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'Outfit', sans-serif;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-search {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+    .btn-clear {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+        .btn-clear:hover {
+            background: #cbd5e0;
+        }
+
+    .search-results-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: #edf2f7;
+        border-radius: 10px;
+    }
+
+    .results-count {
+        font-size: 0.95rem;
+        color: #4a5568;
+        font-weight: 500;
+    }
+
+    .active-filters {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-tag {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+        .filter-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 0;
+            margin: 0;
+        }
+
+    /* Buttons */
+    .btn {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 10px;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        font-family: 'Outfit', sans-serif;
+    }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+    .btn-add {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+    }
+
+        .btn-add:hover {
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+        }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    }
+
+        .btn-delete:hover {
+            box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+        }
+
+    /* Table */
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table, th, td {
+        border: none;
+    }
+
+    th, td {
+        padding: 1rem 1.5rem;
+        text-align: left;
+    }
+
+    th {
+        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.05em;
+    }
+
+    tbody tr {
+        border-bottom: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+    }
+
+        tbody tr:hover {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            transform: scale(1.01);
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+    .actions button {
+        margin-right: 0.5rem;
+    }
+
+    /* Modal styling */
+    .modal-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .modal-box {
+        background: white;
+        padding: 2.5rem;
+        border-radius: 20px;
+        width: 450px;
+        max-width: 95%;
+        text-align: left;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-box input,
+    .modal-box textarea,
+    .modal-box select {
+        width: 100%;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        font-size: 1rem;
+        font-family: 'Outfit', sans-serif;
+        transition: all 0.2s ease;
+    }
+
+        .modal-box input:focus,
+        .modal-box textarea:focus,
+        .modal-box select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+    .modal-box button {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .modal-box img {
+        display: block;
+        margin-bottom: 1rem;
+        max-height: 180px;
+        width: 100%;
+        object-fit: cover;
+        border-radius: 12px;
+    }
+
+    .modal-box h3 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: #1a202c;
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+
+    .modal-box label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #4a5568;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Confirmation Modal */
+    .confirm-modal {
+        background: white;
+        padding: 2.5rem;
+        border-radius: 20px;
+        width: 450px;
+        max-width: 95%;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease-out;
+    }
+
+        .confirm-modal h3 {
+            color: #e53e3e;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        .confirm-modal p {
+            margin-bottom: 2rem;
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        .confirm-modal .btn-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+    .product-image {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    @@media (max-width: 768px) {
+        .search-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h2>Admin Dashboard</h2>
+        <button class="btn btn-add" @onclick="ShowAddModal">+ Add New Product</button>
+    </div>
+
+    <!-- Search & Filter Section -->
+    <div class="search-filter-section">
+        <div class="search-grid">
+            <div class="search-field">
+                <label>Search by ID</label>
+                <input type="number" @bind="searchId" placeholder="Enter product ID" />
+            </div>
+            <div class="search-field">
+                <label>Search by Name</label>
+                <input type="text" @bind="searchName" placeholder="Enter product name" />
+            </div>
+            <div class="search-field">
+                <label>Filter by Category</label>
+                <select @bind="searchCategory">
+                    <option value="">All Categories</option>
+                    @foreach (var category in availableCategories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+            </div>
+            <div class="search-field">
+                <label>Min Price</label>
+                <input type="number" @bind="minPrice" placeholder="Min" step="0.01" />
+            </div>
+            <div class="search-field">
+                <label>Max Price</label>
+                <input type="number" @bind="maxPrice" placeholder="Max" step="0.01" />
+            </div>
+        </div>
+
+        <div class="search-actions">
+            <button class="btn-search" @onclick="ApplyFilters">
+                <span></span> Search & Filter
+            </button>
+            <button class="btn-clear" @onclick="ClearFilters">
+                <span></span> Clear All
+            </button>
+        </div>
+    </div>
+
+    @if (HasActiveFilters())
+    {
+        <div class="search-results-info">
+            <span class="results-count">Found @filteredProducts.Count of @allProducts.Count products</span>
+            <div class="active-filters">
+                @if (searchId.HasValue)
+                {
+                    <span class="filter-tag">
+                        ID: @searchId
+                        <button @onclick="() => { searchId = null; ApplyFilters(); }">×</button>
+                    </span>
+                }
+                @if (!string.IsNullOrEmpty(searchName))
+                {
+                    <span class="filter-tag">
+                        Name: @searchName
+                        <button @onclick="() => { searchName = string.Empty; ApplyFilters(); }">×</button>
+                    </span>
+                }
+                @if (!string.IsNullOrEmpty(searchCategory))
+                {
+                    <span class="filter-tag">
+                        Category: @searchCategory
+                        <button @onclick="() => { searchCategory = string.Empty; ApplyFilters(); }">×</button>
+                    </span>
+                }
+                @if (minPrice.HasValue || maxPrice.HasValue)
+                {
+                    <span class="filter-tag">
+                        Price: @(minPrice?.ToString("C") ?? "Any") - @(maxPrice?.ToString("C") ?? "Any")
+                        <button @onclick="() => { minPrice = null; maxPrice = null; ApplyFilters(); }">×</button>
+                    </span>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Category</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (filteredProducts.Any())
+                {
+                    @foreach (var p in filteredProducts)
+                    {
+                        <tr>
+                            <td><strong>#@p.Id</strong></td>
+                            <td><img src="@p.ImageUrl" alt="@p.Name" class="product-image" /></td>
+                            <td>@p.Name</td>
+                            <td><strong>@p.Price.ToString("C")</strong></td>
+                            <td>@p.Stock</td>
+                            <td><span style="background: #edf2f7; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">@p.Category</span></td>
+                            <td class="actions">
+                                <button class="btn" @onclick="() => EditProduct(p)">Edit</button>
+                                <button class="btn btn-delete" @onclick="() => ShowDeleteConfirmation(p.Id, p.Name)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem; color: #a0aec0; font-size: 1.1rem;">
+                            @if (HasActiveFilters())
+                            {
+                                <div>
+                                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                                    <div>No products match your search criteria</div>
+                                    <button class="btn" @onclick="ClearFilters" style="margin-top: 1rem;">Clear Filters</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div>
+                                    <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+                                    <div>No products found</div>
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (showAddModal)
+{
+    <div class="modal-bg" @onclick="HideModal">
+        <div class="modal-box" @onclick:stopPropagation="true">
+            <h3>@(editingProduct ? "Edit Product" : "Add New Product")</h3>
+            <EditForm Model="currentProduct" OnValidSubmit="SaveProduct">
+                <DataAnnotationsValidator />
+
+                <label>Name</label>
+                <InputText @bind-Value="currentProduct.Name" placeholder="Enter product name" />
+
+                <label>Description</label>
+                <InputText @bind-Value="currentProduct.Description" placeholder="Enter description" />
+
+                <label>Price</label>
+                <InputNumber @bind-Value="currentProduct.Price" placeholder="0.00" />
+
+                <label>Stock</label>
+                <InputNumber @bind-Value="currentProduct.Stock" placeholder="0" />
+
+                <label>Image URL</label>
+                <InputText @bind-Value="currentProduct.ImageUrl" placeholder="https://example.com/image.jpg" />
+
+                @if (!string.IsNullOrEmpty(currentProduct.ImageUrl))
+                {
+                    <img src="@currentProduct.ImageUrl" alt="Preview" />
+                }
+
+                <label>Category</label>
+                <InputText @bind-Value="currentProduct.Category" placeholder="Enter category" />
+
+                <div style="display:flex; justify-content:space-between; gap:0.5rem;">
+                    <button type="submit" class="btn btn-add">Save</button>
+                    <button type="button" class="btn" @onclick="HideModal">Cancel</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@if (showDeleteModal)
+{
+    <div class="modal-bg" @onclick="HideDeleteConfirmation">
+        <div class="confirm-modal" @onclick:stopPropagation="true">
+            <h3>Confirm Deletion</h3>
+            <p>Are you sure you want to delete <strong>@productToDeleteName</strong>?<br />This action cannot be undone.</p>
+            <div class="btn-group">
+                <button class="btn" @onclick="HideDeleteConfirmation">Cancel</button>
+                <button class="btn btn-delete" @onclick="ConfirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Product> allProducts = new();
+    private List<Product> filteredProducts = new();
+    private List<string> availableCategories = new();
+
+    private bool showAddModal = false;
+    private bool editingProduct = false;
+    private Product currentProduct = new Product();
+
+    // Delete confirmation
+    private bool showDeleteModal = false;
+    private int productToDeleteId;
+    private string productToDeleteName = "";
+
+    // Search & Filter fields
+    private int? searchId;
+    private string searchName = string.Empty;
+    private string searchCategory = string.Empty;
+    private decimal? minPrice;
+    private decimal? maxPrice;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        allProducts = await productService.GetAllAsync();
+        filteredProducts = allProducts;
+
+     
+        availableCategories = allProducts
+            .Where(p => !string.IsNullOrEmpty(p.Category))
+            .Select(p => p.Category)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredProducts = allProducts.Where(p =>
+        {
+            // Filter by ID
+            if (searchId.HasValue && p.Id != searchId.Value)
+                return false;
+
+            // Filter by Name (contains, case-insensitive)
+            if (!string.IsNullOrEmpty(searchName) &&
+                !p.Name.Contains(searchName, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            // Filter by Category
+            if (!string.IsNullOrEmpty(searchCategory) &&
+                !p.Category.Equals(searchCategory, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            // Filter by Min Price
+            if (minPrice.HasValue && p.Price < minPrice.Value)
+                return false;
+
+            // Filter by Max Price
+            if (maxPrice.HasValue && p.Price > maxPrice.Value)
+                return false;
+
+            return true;
+        }).ToList();
+
+        StateHasChanged();
+    }
+
+    private void ClearFilters()
+    {
+        searchId = null;
+        searchName = string.Empty;
+        searchCategory = string.Empty;
+        minPrice = null;
+        maxPrice = null;
+        filteredProducts = allProducts;
+        StateHasChanged();
+    }
+
+    private bool HasActiveFilters()
+    {
+        return searchId.HasValue ||
+               !string.IsNullOrEmpty(searchName) ||
+               !string.IsNullOrEmpty(searchCategory) ||
+               minPrice.HasValue ||
+               maxPrice.HasValue;
+    }
+
+    private void ShowAddModal()
+    {
+        currentProduct = new Product();
+        editingProduct = false;
+        showAddModal = true;
+        StateHasChanged();
+    }
+
+    private void HideModal()
+    {
+        showAddModal = false;
+        currentProduct = new Product();
+        StateHasChanged();
+    }
+
+    private void EditProduct(Product p)
+    {
+        currentProduct = new Product
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Description = p.Description,
+            Price = p.Price,
+            Stock = p.Stock,
+            ImageUrl = p.ImageUrl,
+            Category = p.Category
+        };
+        editingProduct = true;
+        showAddModal = true;
+        StateHasChanged();
+    }
+
+    private async Task SaveProduct()
+    {
+        if (editingProduct)
+        {
+            await productService.UpdateAsync(currentProduct);
+        }
+        else
+        {
+            await productService.AddAsync(currentProduct);
+        }
+
+        await LoadProducts();
+        ApplyFilters(); // Reapply filters after saving
+        showAddModal = false;
+        currentProduct = new Product();
+        StateHasChanged();
+    }
+
+    private void ShowDeleteConfirmation(int id, string name)
+    {
+        productToDeleteId = id;
+        productToDeleteName = name;
+        showDeleteModal = true;
+    }
+
+    private void HideDeleteConfirmation()
+    {
+        showDeleteModal = false;
+        productToDeleteId = 0;
+        productToDeleteName = "";
+        StateHasChanged();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        await DeleteProduct(productToDeleteId);
+        HideDeleteConfirmation();
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        await productService.DeleteAsync(id);
+
+        var p = allProducts.FirstOrDefault(x => x.Id == id);
+        if (p != null)
+        {
+            allProducts.Remove(p);
+            ApplyFilters(); 
+        }
+
+        StateHasChanged();
+    }
+}
+
+

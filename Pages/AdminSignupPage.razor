@@ -1,0 +1,270 @@
+﻿@page "/admin-signup"
+@using PixelPort.Components.Models
+@using PixelPort.Services
+@inject UserService userService
+@inject NavigationManager navigation
+@rendermode InteractiveServer
+
+<style>
+    nav {
+        background: #2c3e50;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem;
+    }
+
+        nav ul {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+            margin: 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+
+            nav a:hover {
+                color: #3498db;
+            }
+
+    .signup-container {
+        max-width: 400px;
+        margin: 3rem auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+        .signup-container h2 {
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+
+    input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 0.6rem;
+        margin-bottom: 1rem;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 0.7rem;
+        background: #1abc9c;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-top: 0.5rem;
+    }
+
+        .btn:hover {
+            background: #16a085;
+        }
+
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+    .login-btn {
+        background: #3498db;
+        margin-top: 1rem;
+    }
+
+        .login-btn:hover {
+            background: #2980b9;
+        }
+
+    .error-message {
+        color: red;
+        margin-top: 0.8rem;
+        font-weight: bold;
+    }
+
+    .success-message {
+        color: #16a085;
+        margin-top: 0.8rem;
+        font-weight: bold;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+        text-align: left;
+    }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.3rem;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-weight: normal;
+        }
+</style>
+
+<nav>
+    <div>PixelPort</div>
+    <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/admin-login">Admin</a></li>
+    </ul>
+</nav>
+
+<div class="signup-container">
+    <h2>Admin Sign Up</h2>
+    <EditForm Model="signupModel" OnValidSubmit="SignUp" FormName="AdminSignUpForm">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label>Username</label>
+            <InputText @bind-Value="signupModel.Username" type="text" placeholder="Enter username" />
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <InputText @bind-Value="signupModel.Password" type="password" placeholder="Enter password" />
+        </div>
+
+        <div class="form-group">
+            <label>Confirm Password</label>
+            <InputText @bind-Value="signupModel.ConfirmPassword" type="password" placeholder="Confirm password" />
+        </div>
+
+        <div class="checkbox-group">
+            <InputCheckbox @bind-Value="signupModel.IsAdmin" id="isAdmin" />
+            <label for="isAdmin">Register as Admin</label>
+        </div>
+
+        <button class="btn" type="submit" disabled="@isProcessing">
+            @if (isProcessing)
+            {
+                <text>Creating Account...</text>
+            }
+            else
+            {
+                <text>Sign Up</text>
+            }
+        </button>
+    </EditForm>
+
+    <button class="btn login-btn" @onclick="GoToLogin">Already have an account? Login</button>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p class="error-message">@errorMessage</p>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <p class="success-message">@successMessage</p>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private SignupModel signupModel { get; set; } = new();
+
+    private string errorMessage = "";
+    private string successMessage = "";
+    private bool isProcessing = false;
+
+    private async Task SignUp()
+    {
+        try
+        {
+            errorMessage = "";
+            successMessage = "";
+            isProcessing = true;
+
+            if (signupModel.Password != signupModel.ConfirmPassword)
+            {
+                errorMessage = "Passwords do not match";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(signupModel.Password) || signupModel.Password.Length < 6)
+            {
+                errorMessage = "Password must be at least 6 characters long";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(signupModel.Username) || signupModel.Username.Length < 3)
+            {
+                errorMessage = "Username must be at least 3 characters long";
+                return;
+            }
+
+            var existingUser = await userService.GetByUsernameAsync(signupModel.Username);
+            if (existingUser != null)
+            {
+                errorMessage = "Username already exists";
+                return;
+            }
+
+       
+            var newUser = new User
+            {
+                Username = signupModel.Username.Trim(),
+                PasswordHash = signupModel.Password.Trim(), 
+                IsAdmin = signupModel.IsAdmin
+            };
+
+            await userService.CreateAsync(newUser);
+
+            successMessage = "Account created successfully! Redirecting to login...";
+            await Task.Delay(2000);
+            navigation.NavigateTo("/admin-login");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating account: {ex.Message}";
+            Console.WriteLine($"Signup error: {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void GoToLogin()
+    {
+        navigation.NavigateTo("/admin-login");
+    }
+
+    public class SignupModel
+    {
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string ConfirmPassword { get; set; } = "";
+        public bool IsAdmin { get; set; } = true;
+    }
+}

@@ -1,0 +1,140 @@
+﻿@page "/add-product"
+@using PixelPort.Components.Models
+@using PixelPort.Data
+@inject AppDbContext dbContext
+@inject NavigationManager navigation
+@using Microsoft.EntityFrameworkCore
+@rendermode InteractiveServer
+
+<div class="dashboard-container" style="max-width:800px; margin:auto; padding:2rem;">
+    <h2 style="text-align:center; margin-bottom:2rem; font-weight:bold; color:#333;">Add New Product</h2>
+
+    <EditForm Model="@product" OnValidSubmit="@SaveProduct" FormName="AddProductForm" class="product-form" style="background:#fff; padding:2.5rem; border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger mb-4" />
+
+        <div class="form-group mb-4">
+            <label for="product-name" style="font-weight:600; color:#555;">Name</label>
+            <InputText id="product-name" @bind-Value="product.Name" placeholder="Enter product name" class="input form-control" />
+        </div>
+
+        <div class="form-group mb-4">
+            <label style="font-weight:600; color:#555;">Description</label>
+            <InputTextArea @bind-Value="product.Description" placeholder="Enter description" class="input form-control" rows="3" />
+        </div>
+
+        <div class="row mb-4 g-3">
+            <div class="col">
+                <label style="font-weight:600; color:#555;">Price</label>
+                <InputNumber @bind-Value="product.Price" class="input form-control" />
+            </div>
+            <div class="col">
+                <label style="font-weight:600; color:#555;">Stock</label>
+                <InputNumber @bind-Value="product.Stock" class="input form-control" />
+            </div>
+        </div>
+
+        <div class="form-group mb-4">
+            <label style="font-weight:600; color:#555;">Image URL</label>
+            <InputText @bind-Value="product.ImageUrl" placeholder="Enter image URL" class="input form-control" />
+        </div>
+
+        <div class="form-group mb-4">
+            <label style="font-weight:600; color:#555;">Category</label>
+            <InputText @bind-Value="product.Category" placeholder="Enter category" class="input form-control" />
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <button type="submit" class="btn btn-gradient px-5 py-2" style="border-radius:10px; font-weight:600;">Save</button>
+            <button type="button" class="btn btn-secondary px-5 py-2" style="border-radius:10px; font-weight:600;" @onclick="Cancel">Cancel</button>
+        </div>
+    </EditForm>
+
+    @if (isSaving && savedProduct is not null)
+    {
+        <div class="card mt-5 p-4" style="border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,0.08); background:#fdfdfd; transition:0.3s;">
+            <h5 style="font-weight:700; margin-bottom:1.2rem; color:#333;">Saved Product</h5>
+            <p><strong>Name:</strong> @savedProduct.Name</p>
+            <p><strong>Description:</strong> @savedProduct.Description</p>
+            <p><strong>Price:</strong> $@savedProduct.Price</p>
+            <p><strong>Stock:</strong> @savedProduct.Stock</p>
+            <p><strong>Category:</strong> @savedProduct.Category</p>
+            @if (!string.IsNullOrWhiteSpace(savedProduct.ImageUrl))
+            {
+                <img src="@savedProduct.ImageUrl" alt="product image" style="max-width:250px; border-radius:12px; margin-top:1rem; box-shadow:0 4px 12px rgba(0,0,0,0.1);" />
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        color: white;
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+
+    .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+        .btn-secondary:hover {
+            background: #d5d5d5;
+            transform: translateY(-2px);
+        }
+
+    .input.form-control {
+        border-radius: 10px;
+        padding: 0.6rem;
+        border: 1px solid #ccc;
+        transition: all 0.3s ease;
+    }
+
+        .input.form-control:focus {
+            border-color: #2575fc;
+            box-shadow: 0 0 8px rgba(37,117,252,0.3);
+        }
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+@code {
+    [SupplyParameterFromForm]
+    private Product product { get; set; } = new Product();
+
+    private Product? savedProduct;
+    private bool isSaving = false;
+
+    private async Task SaveProduct()
+    {
+   
+        product.Name = string.IsNullOrWhiteSpace(product.Name) ? "" : product.Name;
+        product.Description = string.IsNullOrWhiteSpace(product.Description) ? "" : product.Description;
+        product.ImageUrl = string.IsNullOrWhiteSpace(product.ImageUrl) ? "" : product.ImageUrl;
+        product.Category = string.IsNullOrWhiteSpace(product.Category) ? "" : product.Category;
+
+        dbContext.Products.Add(product);
+        await dbContext.SaveChangesAsync();
+
+        savedProduct = product;
+        isSaving = true;
+
+
+        product = new Product();
+        StateHasChanged();
+    }
+
+    private void Cancel() => navigation.NavigateTo("/admin-dashboard");
+}

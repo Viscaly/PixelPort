@@ -1,0 +1,160 @@
+﻿@page "/admin-login"
+
+@using PixelPort.Components.Models
+@using PixelPort.Services
+
+@inject UserService userService
+@inject NavigationManager navigation
+
+@rendermode InteractiveServer
+
+<style>
+    nav {
+        background: #2c3e50;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem;
+    }
+
+        nav ul {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+            margin: 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+
+            nav a:hover {
+                color: #3498db;
+            }
+
+    .login-container {
+        max-width: 400px;
+        margin: 3rem auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+        .login-container h2 {
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+
+    input[type="text"],
+    input[type="password"] {
+        width: 100%;
+        padding: 0.6rem;
+        margin-bottom: 1rem;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        font-size: 1rem;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 0.7rem;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+    .signup-btn {
+        margin-top: 1rem;
+        background: #1abc9c;
+    }
+
+        .signup-btn:hover {
+            background: #16a085;
+        }
+
+    .error-message {
+        color: red;
+        margin-top: 0.8rem;
+        font-weight: bold;
+    }
+</style>
+
+<nav>
+    <div>PixelPort</div>
+    <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/admin-login">Admin</a></li>
+    </ul>
+</nav>
+
+<div class="login-container">
+    <h2>Admin Login</h2>
+
+    <EditForm Model="loginModel" OnValidSubmit="Login" FormName="AdminLoginForm">
+        <DataAnnotationsValidator />
+
+        <InputText @bind-Value="loginModel.Username"
+                   type="text"
+                   placeholder="Username" />
+
+        <InputText @bind-Value="loginModel.Password"
+                   type="password"
+                   placeholder="Password" />
+
+        <button class="btn" type="submit">Login</button>
+    </EditForm>
+
+    <button class="btn signup-btn" @onclick="SignUp">
+        Sign Up
+    </button>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p class="error-message">@errorMessage</p>
+    }
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string errorMessage = "";
+
+    private async Task Login()
+    {
+        var user = await userService.AuthenticateAsync(
+            loginModel.Username.Trim(),
+            loginModel.Password.Trim()
+        );
+
+        if (user == null)
+        {
+            errorMessage = "Wrong username or password";
+            return;
+        }
+
+        if (!user.IsAdmin)
+        {
+            errorMessage = "Not an admin account";
+            return;
+        }
+
+        navigation.NavigateTo("/admin-dashboard");
+    }
+
+    private void SignUp()
+    {
+        navigation.NavigateTo("/admin-signup");
+    }
+}
